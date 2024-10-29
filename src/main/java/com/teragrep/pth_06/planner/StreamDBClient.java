@@ -57,6 +57,7 @@ import org.jooq.conf.RenderMapping;
 import org.jooq.conf.Settings;
 import org.jooq.conf.ThrowExceptions;
 import org.jooq.impl.DSL;
+import org.jooq.impl.DefaultConfiguration;
 import org.jooq.types.ULong;
 import org.jooq.types.UShort;
 import org.slf4j.Logger;
@@ -107,6 +108,7 @@ public class StreamDBClient {
         final String bloomdbName = config.archiveConfig.bloomDbName;
         final boolean hideDatabaseExceptions = config.archiveConfig.hideDatabaseExceptions;
         final boolean withoutFilters = config.archiveConfig.withoutFilters;
+        final Configuration dslConfiguration = new DefaultConfiguration();
 
         // https://blog.jooq.org/how-i-incorrectly-fetched-jdbc-resultsets-again/
         Settings settings = new Settings()
@@ -114,11 +116,12 @@ public class StreamDBClient {
         if (hideDatabaseExceptions) {
             settings = settings.withThrowExceptions(ThrowExceptions.THROW_NONE);
             LOGGER.warn("StreamDBClient SQL Exceptions set to THROW_NONE");
+            dslConfiguration.set(new SQLExceptionListener());
         }
-
         System.getProperties().setProperty("org.jooq.no-logo", "true");
         final Connection connection = DriverManager.getConnection(url, userName, password);
-        this.ctx = DSL.using(connection, SQLDialect.MYSQL, settings);
+        dslConfiguration.set(connection).set(SQLDialect.MYSQL).set(settings);
+        this.ctx = DSL.using(dslConfiguration);
 
         if (hideDatabaseExceptions) {
             // force sql mode to NO_ENGINE_SUBSTITUTION, STRICT mode
